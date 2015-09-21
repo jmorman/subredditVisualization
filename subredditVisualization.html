@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Subreddit Visualization</title>
+		<link rel="stylesheet" href="svstyle.css">
+        <!-- <script type="text/javascript" src="/usr/share/javascript/d3/d3.js"></script> -->
+        <script type="text/javascript" src="../d3/d3.v3.js"></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+
+			var w = 1000;
+			var h = 300;
+			var wlPadding = 50;
+			var wrPadding = 300;
+			var hPadding = 30;
+			var dataset = [];
+
+			var svg = d3.select("body")
+					.append("svg")
+					.attr("width", w)
+					.attr("height", h);
+
+			// Load iris dataset. Makes array of objects, each object containing info in a row
+			// second argument is an anonymous function which is called after attempting to
+			//	load the data
+			d3.csv("iris.csv", function(error, data) {
+				if (error) {  
+          			console.log(error);  //Log the error.
+        		} else {      
+          			dataset=data;
+					irisFunction();
+				}
+			});
+			
+			var irisFunction = function(){
+
+				console.log(dataset);
+
+				var features = ["petal_width", "petal_length", "sepal_length", "sepal_width"];
+
+				var scales = makeScales(features);
+				var xScale = scales[0];
+				var yScale = scales[1];
+
+				drawLineChart(xScale, yScale, features);
+				drawAxes(xScale, yScale);
+
+				//write out iris data for convenience
+				//writeData();
+				for (var i = 0; i < features.length; i++){
+					svg.append("text")
+						.attr("x", w - wrPadding * 0.75)
+						.attr("y", 0.85 * h / features.length * (i + 1))
+						.attr("id", features[i])
+						.style("color", "black")
+						.text("Remove " + features[i])
+						.on('click',function(){ 
+							d3.select(this)
+								.transition()
+								.duration(1000)
+								.attr("fill", "red");
+							d3.select("#line_" + this.id)
+								.transition()
+								.duration(1000)
+								.style("opacity", 0); 
+						});
+				}
+
+			}
+		
+			var makeScales = function(feats){
+				maxes = []
+				for (var i = 0; i < feats.length; i++){
+					featMax = d3.max(dataset, function(d) { return d[feats[i]]; });
+					maxes.push(featMax);
+				}
+
+				//spread operator
+				max = Math.max(...maxes);
+
+				for (var i = 0; i < feats.length; i++){
+					var xscl = d3.scale.linear()
+									 .domain([0, dataset.length])
+									 .range([wlPadding, w - wrPadding]);
+
+					var yscl = d3.scale.linear()
+									 .domain([0, max])
+									 .range([h - hPadding, hPadding]);
+				}
+
+				return [xscl, yscl];
+			}
+
+			var drawLineChart = function(xscl, yscl, feats){
+				var colors = ["green", "red", "blue", "yellow"];
+				for (var i = 0; i < feats.length; i++){
+
+					//d3.svg.line() is a helper class for generating path data.
+					//"Each generator is a function of data"
+					var line = d3.svg.line()
+						.x(function(d, i) { return xscl(i); })
+						.y(function(d) { return yscl(d[feats[i]]); })
+						//.interpolate("linear");
+						.interpolate("basis");
+
+					svg.append("path")
+						.attr("d", line(dataset))
+						.attr("stroke", colors[i])
+						.attr("stroke-width", 2)
+						.attr("id", "line_" + feats[i])
+						.attr("class", "line")
+						.attr("fill", "none");
+
+					/*var points = svg.selectAll("circle")
+						.data(dataset)
+						.enter()
+						.append("circle");
+
+					points.attr("cx", function(d, i) {
+						return xscl(i);
+					})
+					.attr("cy", function(d) {
+						return yscl(d[feats[i]]);
+					})
+					.attr("r", "3px")
+					.attr("fill", "teal")
+					.attr("stroke", "blue")
+					.attr("stroke-width", "2px");*/
+				}
+			}
+
+			var drawAxes = function(xscl, yscl){
+
+				//Define X axis
+				var xAxis = d3.svg.axis()
+							  .scale(xscl)
+							  .orient("bottom")
+							  .ticks(10);
+
+				//Define Y axis
+				var yAxis = d3.svg.axis()
+							  .scale(yscl)
+							  .orient("left")
+							  .ticks(10);
+				//Create X axis
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + (h - hPadding) + ")")
+					.call(xAxis);
+			
+				//Create Y axis
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(" + wlPadding + ",0)")
+					.call(yAxis);
+			}
+
+			/*var writeData = function(){
+
+				//write out iris data for convenience
+				d3.select("body").selectAll("p")
+				.data(dataset)
+				.enter()
+				.append("p")
+				.text(function(d) {
+					return JSON.stringify(d);
+				});
+
+			}*/
+
+        </script>
+    </body>
+</html>
