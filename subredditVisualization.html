@@ -36,11 +36,15 @@
 			
 			var irisFunction = function(){
 
-				console.log(dataset);
+				var features = {petal_width: true, 
+								petal_length: true, 
+								sepal_length: true, 
+								sepal_width: true};
 
-				var features = ["petal_width", "petal_length", "sepal_length", "sepal_width"];
+				var actives = activeFeatures(features);
+				var all = Object.keys(features);
 
-				var scales = makeScales(features);
+				var scales = makeScales(actives);
 				var xScale = scales[0];
 				var yScale = scales[1];
 
@@ -49,25 +53,33 @@
 
 				//write out iris data for convenience
 				//writeData();
-				for (var i = 0; i < features.length; i++){
+				for (var i = 0; i < all.length; i++){
 					svg.append("text")
 						.attr("x", w - wrPadding * 0.75)
-						.attr("y", 0.85 * h / features.length * (i + 1))
-						.attr("id", features[i])
+						.attr("y", 0.85 * h / all.length * (i + 1))
+						.attr("id", "button_" + all[i])
 						.style("color", "black")
-						.text("Remove " + features[i])
-						.on('click',function(){ 
-							d3.select(this)
-								.transition()
-								.duration(1000)
-								.attr("fill", "red");
-							d3.select("#line_" + this.id)
-								.transition()
-								.duration(1000)
-								.style("opacity", 0); 
+						.text("Toggle " + all[i])
+						.on('click', function(){ 
+							prefixLength = "button_".length;
+							targetFeature = this.id.slice(prefixLength, this.id.length);
+							if(features.hasOwnProperty(targetFeature)){
+								features[targetFeature] = !features[targetFeature];
+								drawLineChart(xScale, yScale, features);
+							}
 						});
 				}
 
+			}
+
+			var activeFeatures = function(feats){
+				result = [];
+				for (feat in feats){
+					if(feats[feat]){
+						result.push(feat);
+					}				
+				}
+				return result;
 			}
 		
 			var makeScales = function(feats){
@@ -94,40 +106,40 @@
 			}
 
 			var drawLineChart = function(xscl, yscl, feats){
-				var colors = ["green", "red", "blue", "yellow"];
-				for (var i = 0; i < feats.length; i++){
+				var color = "rgb(" + (Math.floor(Math.random() * 256)) + "," + (Math.floor(Math.random() 						* 256)) + "," + (Math.floor(Math.random() * 256)) + ")";
+				for (feat in feats){
+					//if feature should be charted,
+					if(feats[feat]){
+						//and if feature is not charted,
+						if(d3.select("#line_" + feat).empty()){
+							//then chart it:
+							color = "rgb(" + (Math.floor(Math.random() * 256)) + "," + 										(Math.floor(Math.random() * 256)) + "," + 										(Math.floor(Math.random() * 256)) + ")";
+							//d3.svg.line() is a helper class for generating path data.
+							//"Each generator is a function of data"
+							var line = d3.svg.line()
+								.x(function(d, i) { return xscl(i); })
+								.y(function(d) { return yscl(d[feat]); })
+								//.interpolate("linear");
+								.interpolate("basis");
 
-					//d3.svg.line() is a helper class for generating path data.
-					//"Each generator is a function of data"
-					var line = d3.svg.line()
-						.x(function(d, i) { return xscl(i); })
-						.y(function(d) { return yscl(d[feats[i]]); })
-						//.interpolate("linear");
-						.interpolate("basis");
-
-					svg.append("path")
-						.attr("d", line(dataset))
-						.attr("stroke", colors[i])
-						.attr("stroke-width", 2)
-						.attr("id", "line_" + feats[i])
-						.attr("class", "line")
-						.attr("fill", "none");
-
-					/*var points = svg.selectAll("circle")
-						.data(dataset)
-						.enter()
-						.append("circle");
-
-					points.attr("cx", function(d, i) {
-						return xscl(i);
-					})
-					.attr("cy", function(d) {
-						return yscl(d[feats[i]]);
-					})
-					.attr("r", "3px")
-					.attr("fill", "teal")
-					.attr("stroke", "blue")
-					.attr("stroke-width", "2px");*/
+							svg.append("path")
+								.attr("d", line(dataset))
+								.attr("stroke", color)
+								.attr("stroke-width", 2)
+								.attr("id", "line_" + feat)
+								.attr("class", "line")
+								.attr("fill", "none");
+						}
+					}
+					//if feature should not be charted,
+					else{
+						//but feature is charted,
+						if(!d3.select("#line_" + feat).empty()){
+							//then remove it:
+							console.log("line_" + feat);
+							d3.select("#line_" + feat).remove();
+						}
+					}
 				}
 			}
 
