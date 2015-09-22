@@ -8,15 +8,24 @@
         <script type="text/javascript" src="../d3/d3.v3.js"></script>
     </head>
     <body>
+
+		<input type="text" name="query" id="query">
+		<button type="button" onclick="retrieveText('query');">Show feature</button>
+
         <script type="text/javascript">
 
+			
 			var w = 1000;
 			var h = 300;
 			var wlPadding = 50;
 			var wrPadding = 300;
 			var hPadding = 30;
 			var dataset = [];
-
+			var features = {petal_width: false, 
+							petal_length: false, 
+							sepal_length: false, 
+							sepal_width: false};
+			var acceptQueries = false;
 			var svg = d3.select("body")
 					.append("svg")
 					.attr("width", w)
@@ -35,42 +44,47 @@
 			});
 			
 			var irisFunction = function(){
-
-				var features = {petal_width: true, 
-								petal_length: true, 
-								sepal_length: true, 
-								sepal_width: true};
-
-				var actives = activeFeatures(features);
-				var all = Object.keys(features);
+				acceptQueries = true;
 
 				var [xScale, yScale] = makeScales(features);
 
-				drawLineChart(xScale, yScale, features);
+				//drawLineChart(xScale, yScale, features);
 				drawAxes(xScale, yScale);
+			}
 
-				//write out iris data for convenience
-				//writeData();
-				for (var i = 0; i < all.length; i++){
-					svg.append("text")
-						.attr("x", w - wrPadding * 0.75)
-						.attr("y", 0.85 * h / all.length * (i + 1))
-						.attr("id", "button_" + all[i])
-						.style("color", "black")
-						.text("Toggle " + all[i])
-						.on('click', function(){ 
-							prefixLength = "button_".length;
-							targetFeature = this.id.slice(prefixLength, this.id.length);
-							if(features.hasOwnProperty(targetFeature)){
-								//toggle activate/deactivate corresponding line graph
-								features[targetFeature] = !features[targetFeature];
-								[xScale, yScale] = makeScales(features);
-								drawAxes(xScale, yScale);
-								drawLineChart(xScale, yScale, features);
-							}
-						});
+			var retrieveText = function(id){
+				if(acceptQueries){
+					var textBox = document.getElementById(id);
+					var value = textBox.value;
+					console.log(value);
+					//pseudocode:
+					if(features.hasOwnProperty(value)){
+						features[value] = true;
+						[xScale, yScale] = makeScales(features);
+						drawAxes(xScale, yScale);
+						drawLineChart(xScale, yScale, features);
+						addRemoveButton(value);
+					}
 				}
+				else {
+					console.log("Not accepting queries yet!");
+				}
+			}
 
+			var addRemoveButton = function(feature){
+				svg.append("text")
+					.attr("x", w - wrPadding * 0.75)
+					.attr("y", 0.85 * h / activeFeatures(features).length)
+					.attr("id", "button_" + feature)
+					.style("color", "black")
+					.text("Remove " + feature)
+					.on('click', function(){ 
+						features[feature] = false;
+						[xScale, yScale] = makeScales(features);
+						drawAxes(xScale, yScale);
+						drawLineChart(xScale, yScale, features);
+						this.remove();
+					});				
 			}
 
 			var activeFeatures = function(feats){
@@ -114,7 +128,6 @@
 				for (feat in feats){
 					//if feature should be charted,
 					if(feats[feat]){
-
 						//d3.svg.line() is a helper class for generating path data.
 						//"Each generator is a function of data"
 						var line = d3.svg.line()
@@ -125,7 +138,6 @@
 
 						//and if feature is not charted,
 						if(d3.select("#line_" + feat).empty()){
-							
 							//then chart it:
 							color = getRandomColor();
 
