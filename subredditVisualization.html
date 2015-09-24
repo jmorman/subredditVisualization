@@ -8,57 +8,61 @@
         <script type="text/javascript" src="../d3/d3.v3.js"></script>
     </head>
     <body>
-
-		<input type="text" name="query" id="query">
-		<button type="button" onclick="retrieveText('query');">Show feature</button>
-
+		<p>Enter the name of a subreddit (currently case-sensitive):</p>
+		<input type="text" name="request" id="request">
+		<button type="button" onclick="processRequest('request');">Show comment data</button>
+		<br>
+		<br>
         <script type="text/javascript">
 
-			
+			//TODO: Responsive web design
 			var w = 1000;
-			var h = 300;
-			var wlPadding = 50;
-			var wrPadding = 300;
-			var hPadding = 30;
+			var h = 500;
+			var lPadding = 100;
+			var rPadding = 300;
+			var uPadding = 50;
+			var dPadding = 80;
 			var dataset = [];
-			var features = {petal_width: false, 
-							petal_length: false, 
-							sepal_length: false, 
-							sepal_width: false};
+			//features consists of property-value pairs, where the properties are the subreddits in the
+			//dataset and the values are booleans indicating whether to show a subreddit's data or not
+			var features = {};
+			//wait for data to load completely before accepting requests
 			var acceptQueries = false;
 			var svg = d3.select("body")
 					.append("svg")
 					.attr("width", w)
 					.attr("height", h);
 
-			// Load iris dataset. Makes array of objects, each object containing info in a row
-			// second argument is an anonymous function which is called after attempting to
-			//	load the data
-			d3.csv("iris.csv", function(error, data) {
+			//Load dataset
+			d3.csv("daily_cleaned.csv", function(error, data) {
 				if (error) {  
-          			console.log(error);  //Log the error.
+          			console.log(error);
         		} else {      
           			dataset=data;
-					irisFunction();
+					startVisualization();
 				}
 			});
 			
-			var irisFunction = function(){
+			var startVisualization = function(){
 				acceptQueries = true;
+				//writeData();
 
+				//populate features:
+				featureNames = Object.getOwnPropertyNames(dataset[0]);
+				for(var i = 0; i < featureNames.length; i++){
+					features[featureNames[i]] = false;
+				}
 				var [xScale, yScale] = makeScales(features);
-
-				//drawLineChart(xScale, yScale, features);
 				drawAxes(xScale, yScale);
 			}
 
-			var retrieveText = function(id){
+			//TODO: Make subreddit names case-insensitive
+			var processRequest = function(id){
 				if(acceptQueries){
 					var textBox = document.getElementById(id);
 					var value = textBox.value;
-					console.log(value);
-					//pseudocode:
 					if(features.hasOwnProperty(value)){
+						//draw corresponding line chart and scale everything accordingly
 						features[value] = true;
 						[xScale, yScale] = makeScales(features);
 						drawAxes(xScale, yScale);
@@ -71,13 +75,21 @@
 				}
 			}
 
+			//Whenever a subreddit's data is charted, a button is created to allow the user
+			//to remove the chart
 			var addRemoveButton = function(feature){
 				svg.append("text")
-					.attr("x", w - wrPadding * 0.75)
+					//Place button
+					//TODO: Prevent overlapping (make some sort of upside-down stack?)
+					//TODO: Use some sort of key to identify charts
+					//maybe text here is same color as chart
+					.attr("x", w - rPadding * 0.75)
 					.attr("y", 0.85 * h / activeFeatures(features).length)
 					.attr("id", "button_" + feature)
 					.style("color", "black")
 					.text("Remove " + feature)
+
+					//Remove and rescale when the button is pressed
 					.on('click', function(){ 
 						features[feature] = false;
 						[xScale, yScale] = makeScales(features);
@@ -101,20 +113,21 @@
 				maxes = []
 				for (feat in feats){
 					if(feats[feat]){
-						featMax = d3.max(dataset, function(d) { return d[feat]; });
+						featMax = d3.max(dataset, function(d) { return parseInt(d[feat]); });
 						maxes.push(featMax);
 					}
 				}
-				//spread operator
+				//... spread operator. E.g. function(...[a,b,c]) is function(a,b,c)
 				maximum = Math.max(...maxes);
 
 				var xscl = d3.scale.linear()
 								.domain([0, dataset.length])
-								.range([wlPadding, w - wrPadding]);
+								.range([lPadding, w - rPadding]);
 
+				//Make y-scale large enough to encompass the highest shown data point
 				var yscl = d3.scale.linear()
 								.domain([0, maximum])
-								.range([h - hPadding, hPadding]);
+								.range([h - dPadding, uPadding]);
 				
 
 				return [xscl, yscl];
@@ -172,33 +185,59 @@
 
 			var drawAxes = function(xscl, yscl){
 
-				//Define X axis
+				//Define and set scale of X axis
 				var xAxis = d3.svg.axis()
 							  .scale(xscl)
 							  .orient("bottom")
 							  .ticks(10);
 
-				//Define Y axis
+				//Define and set scale of Y axis
 				var yAxis = d3.svg.axis()
 							  .scale(yscl)
 							  .orient("left")
 							  .ticks(10);
+
+				//If axes aren't yet drawn (i.e. drawAxes is being called for the first time),
 				if(svg.select("#x_axis").empty()){
+					//Create title
+					svg.append("text")
+						.attr("x", lPadding+(w-rPadding-lPadding)*0.5)
+						.attr("y", uPadding*0.5)
+						.style("text-anchor", "middle")
+						.style("font-size", "20px") 
+						.text("Daily Comments by Subreddit");
+
 					//Create X axis
 					svg.append("g")
 						.attr("class", "axis")
 						.attr("id", "x_axis")
-						.attr("transform", "translate(0," + (h - hPadding) + ")")
+						.attr("transform", "translate(0," + (h - dPadding) + ")")
 						.call(xAxis);
-			
+					
+						//Create X axis label
+					svg.append("text")      
+        				.attr("x", lPadding+(w-rPadding-lPadding)*0.5)
+        				.attr("y",  h-dPadding*0.25 )
+        				.style("text-anchor", "middle")
+        				.text("Day of May 2015");
+
 					//Create Y axis
 					svg.append("g")
 						.attr("class", "axis")
 						.attr("id", "y_axis")
-						.attr("transform", "translate(" + wlPadding + ",0)")
+						.attr("transform", "translate(" + lPadding + ",0)")
 						.call(yAxis);
+
+						//Create Y axis label
+					svg.append("text") 
+						.attr("transform", "rotate(-90)")     
+        				.attr("x", 0 - uPadding - (h - dPadding) * 0.5)
+        				.attr("y",  lPadding*0.25 )
+        				.style("text-anchor", "middle")
+        				.text("Number of Comments");
 				}
 				else {
+					//Adjust scales
 					svg.select("#x_axis")
 						.transition()
 						.duration(500)
@@ -211,9 +250,9 @@
 				}
 			}
 
-			/*var writeData = function(){
+			var writeData = function(){
 
-				//write out iris data for convenience
+				//write out subreddit data below visualization for debugging
 				d3.select("body").selectAll("p")
 				.data(dataset)
 				.enter()
@@ -222,7 +261,7 @@
 					return JSON.stringify(d);
 				});
 
-			}*/
+			}
 
         </script>
     </body>
